@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>spritechase.kiosk</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>com.powerflasher.fdt.core.FlashBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>com.powerflasher.fdt.core.FlashNature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>BROOMSTICK</name>
+			<type>2</type>
+			<locationURI>BROOMSTICK</locationURI>
+		</link>
+		<link>
+			<name>QTRACK.swc</name>
+			<type>1</type>
+			<locationURI>QTRACK</locationURI>
+		</link>
+		<link>
+			<name>READQRSIMPLE</name>
+			<type>2</type>
+			<locationURI>READQRSIMPLE</locationURI>
+		</link>
+	</linkedResources>
+</projectDescription>

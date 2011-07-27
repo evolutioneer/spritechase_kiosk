@@ -1,0 +1,1 @@
+﻿package com.spritechase.ui{		import flash.utils.Dictionary;		public class KioskGlobals	{				public static var data:Object = {			"coke_mentos": {				"name": "Coke and Mentos"			},			"cigar_box_guitar": {				"name": "Cigar Box Guitar"			}		};	}}
