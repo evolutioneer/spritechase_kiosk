@@ -36,6 +36,9 @@
 	[SWF (width=640, height=640, backgroundColor=0)]
 	public class KioskAR extends Sprite {
 		
+		//Public properties
+		public var qrMessageThreshold:int = 2;
+		
 		//QTracker properties
 		[Embed (source='../bin/assets/compudog.gif')]
 		private var MarkerImage:Class;
@@ -44,7 +47,8 @@
 		//Away3d properties
 		private var view:View3D;
 		private var container:ObjectContainer3D;
-		private var model:Loader3D;
+		private var models:Object;
+		private var currentModel:ObjectContainer3D;
 		private var video:VideoPlane;
 		private var focalLength:Number;
 		
@@ -57,11 +61,13 @@
 		private var qrSample:BitmapData;
 		private var qrMessageCt:uint = 0;
 		private var qrMessages:Vector.<String> = new Vector.<String>(32, true);
-		private var qrMessageThreshold:int = 5;
 		private var corners:Vector.<Point> = new Vector.<Point>(4, true);
 		private var rawPoseData:Vector.<Number> = new Vector.<Number> (16);
 		
-		private var debugTrace:TextField;
+		//Fancy 3D animation assets
+		//private var uplinkSpinner:Loader3D;
+		
+		//private var debugTrace:TextField;
 		
 		//Application state
 		private var _debugging:Boolean = true;
@@ -103,16 +109,15 @@
 			//Initialize away3d scene graph
 			view = new View3D();
 			addChild(view);
+			
+			//uplinkSpinner = new Loader3D();
+			//uplinkSpinner.load(new URLRequest('assets/establishing_uplink.obj'));
+			
 			//Loader3D.enableParser(Max3DSParser);
-			//$$testme let's load and parse an OBJ of our own making, shall we!??!
-			Loader3D.enableParser(OBJParser);
-			model = new Loader3D();
-			model.load(new URLRequest('assets/test.obj'));
-			model.rotationX = -90;
-			//model.scale(0.1);
+			//$$todo parse through and load all the models given in the KioskData file
+			loadModels();
 			
 			container = new ObjectContainer3D();
-			container.addChild(model);
 			
 			//Initialize away3d camera
 			view.camera.z = 0;
@@ -151,6 +156,46 @@
 			//Fire the guns
 			tracker.start();
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
+		}
+		
+		/**
+		 *********************************************************************/
+		public function update(modelId:String):void
+		{
+			if(currentModel) container.removeChild(currentModel);
+			if(!models[modelId])
+			{
+				trace('!!! [KioskAR] Bad requested for update: ' + modelId + '.  Showing question mark.');
+				modelId = 'question_mark';
+			}
+			
+			trace('+++ [KioskAR] Adding model ' + modelId + ' to stage...');
+			currentModel = models[modelId] as ObjectContainer3D;
+			container.addChild(currentModel);
+		}
+		
+		/**
+		 *********************************************************************/
+		private function loadModels():void
+		{
+			Loader3D.enableParser(OBJParser);
+			
+			models = new Object();
+			var loader:Loader3D;
+			
+			for each(var model:XML in KioskConfig.data..model)
+			{
+				debug('Loading ' + model.@id + '.obj...');
+				loader = new Loader3D();
+				loader.load(new URLRequest('assets/' + model.@id + '.obj'));
+				loader.rotationX = -90;
+				models[model.@id] = loader;
+			}
+			
+			/*model = new Loader3D();
+			model.load(new URLRequest('assets/test.obj'));
+			model.rotationX = -90;*/
+			//model.scale(0.1);
 		}
 		
 		/**
@@ -196,8 +241,8 @@
 				);
 			}
 			
-			var scaleX:Number = 0.8;
-			var scaleY:Number = 0.8;
+			var scaleX:Number = 0.82;//0.8;
+			var scaleY:Number = 0.82;//0.8;
 			var newCorners:Vector.<Point> = new Vector.<Point>(4, true);
 			
 			newCorners[0] = new Point(corners[0].x * scaleX + corners[1].x * (1 - scaleX), corners[0].y * scaleY + corners[3].y * (1 - scaleY));
@@ -228,14 +273,32 @@
 			searchForQR();
 			removeModelTimer.stop();
 			removeModelTimer.reset();
+			
+			dispatchEvent(new KioskEvent(KioskEvent.HANDSHAKE_ATTEMPT, null));
 		}
 		
+		/**
+		 *********************************************************************/
+		public function showUplinkSpinner():void
+		{
+			trace('KioskAR.showUplinkSpinner()');
+			// container.addChild(uplinkSpinner);
+		}
+		
+		/**
+		 *********************************************************************/
+		public function hideUplinkSpinner():void
+		{
+			trace('KioskAR.hideUplinkSpinner()');
+			//if(uplinkSpinner.parent == container) container.removeChild(uplinkSpinner);
+		}
+		 
 		/**
 		 *********************************************************************/
 		private function onMarkerLost(e:QuadTrackerEvent):void
 		{
 			//view.scene.removeChild(container);
-			debug('MARKER LOST.  Starting timer...');
+			debug('KioskAR.onMarkerLost().  Starting the remove model timer...');
 			removeModelTimer.start();
 		}
 		
@@ -244,6 +307,7 @@
 		private function onMarkerMove(e:QuadTrackerEvent):void
 		{
 			container.transform = fixPose3D(tracker.getPose3D());
+			dispatchEvent(e);
 			searchForQR();
 		}
 		
@@ -272,7 +336,7 @@
 		 *********************************************************************/
 		private function onQrImageRead(e:QRreaderEvent):void
 		{
-			debug('onQrImageRead()');
+			debug('KioskAR.onQrImageRead()');
 			qrDecoder.setQR(e.data);
 			qrDecoder.startDecode();
 		}
@@ -281,7 +345,7 @@
 		 *********************************************************************/
 		private function onQrDecodeComplete(e:QRdecoderEvent):void
 		{
-			debug('+++++++++++ onQrDecodeComplete().  message: ' + e.data);
+			debug('KioskAR.onQrDecodeComplete().  message: ' + e.data);
 			
 			
 			//$$todo comb the array for meaningful values and determine if you have enough to ask the server
@@ -292,7 +356,7 @@
 		 *********************************************************************/
 		private function onRemoveModelTimer(e:TimerEvent):void
 		{
-			debug('onRemoveModelTimer().  marker is lost; removing model from stage.');
+			debug('KioskAR.onRemoveModelTimer().  marker is lost; removing model from stage.');
 			view.scene.removeChild(container);
 			removeModelTimer.stop();
 		}
@@ -304,6 +368,7 @@
 			
 			//We don't need you stinkin' bad characters around
 			if(badChars.length) return;
+			if(data.length != 8) return;
 			
 			qrMessages[qrMessageCt++] = data;
 			dispatchEvent(new KioskEvent(KioskEvent.CLEAN_QR_FOUND, {code: data}));

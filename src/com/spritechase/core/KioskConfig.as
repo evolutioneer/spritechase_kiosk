@@ -1,0 +1,1 @@
+﻿package com.spritechase.core{	public class KioskConfig	{		private static var _data:XML;				public static function init(data:XML):void		{			_data = data;		}				public static function get data():XML		{			return _data;		}	}}

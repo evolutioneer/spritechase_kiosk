@@ -1,0 +1,22 @@
+<xml>
+	<models>
+		<model id="coke_mentos">
+			<param id="name">Coke and Mentos</param>
+		</model>
+		<model id="cigar_box_guitar">
+			<param id="name">Cigar Box Guitar</param>
+		</model>
+		<model id="circuit_bent_casio">
+			<param id="name">Circuit Bent Casio</param>
+		</model>
+		<model id="chronotune">
+			<param id="name">Chronotune</param>
+		</model>
+		<model id="question_mark">
+			<param id="name"No Model Found</param>
+		</model>
+		<model id="establishing_uplink">
+			<param id="name">Uplink</param>
+		</model>
+	</models>
+</xml>
