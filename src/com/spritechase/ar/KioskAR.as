@@ -1,6 +1,7 @@
 ﻿package com.spritechase.ar
 
 {
+	import flash.filters.ConvolutionFilter;
 	import flash.events.TimerEvent;
 	import flash.utils.Timer;
 	import away3d.loaders.parsers.OBJParser;
@@ -56,6 +57,7 @@
 		//[Embed(source="../bin/assets/homography_test.png")]
 		//private var SourceImage:Class;
 		private var homography:Homography;
+		private var convolution:ConvolutionFilter;
 		private var qrReaderHomography:GetQRimage;
 		private var qrDecoder:QRdecode;
 		private var qrSample:BitmapData;
@@ -89,19 +91,6 @@
 		{
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 			
-			//$$debug add the text trace to the stage
-			/*debugTrace = new TextField();
-			addChild(debugTrace);
-			
-			debugTrace.textColor = 0xffffff;
-			debugTrace.autoSize = TextFieldAutoSize.LEFT;
-			debugTrace.backgroundColor = 0x33000000;
-			debugTrace.background = true;
-			debugTrace.alpha = 0.5;
-			
-			debugTrace.height = stage.stageHeight;
-			debugTrace.width = 200;*/
-			
 			//Initialize the removeTimer
 			removeModelTimer = new Timer(1000, 0);
 			removeModelTimer.addEventListener(TimerEvent.TIMER, onRemoveModelTimer);
@@ -110,11 +99,7 @@
 			view = new View3D();
 			addChild(view);
 			
-			//uplinkSpinner = new Loader3D();
-			//uplinkSpinner.load(new URLRequest('assets/establishing_uplink.obj'));
-			
-			//Loader3D.enableParser(Max3DSParser);
-			//$$todo parse through and load all the models given in the KioskData file
+			//Parse through and load all the models given in the KioskData file
 			loadModels();
 			
 			container = new ObjectContainer3D();
@@ -150,12 +135,47 @@
 			
 			//Initialize qr reader and homography
 			homography = new Homography();
+			
 			addChild(homography);
 			//Deferred the creation of the QR properties until homography has valid bitmap data
 			
 			//Fire the guns
 			tracker.start();
 			addEventListener(Event.ENTER_FRAME, onEnterFrame);
+		}
+		
+		public function set sharpnessFilter(value:Boolean):void
+		{
+			if(value && homography.filters.length == 0)
+			{
+				if(!convolution)
+				{
+					var matrix:Array = [0, -1, 0, 
+                             	-1, 5, -1, 
+                             	0, -1, 0]; 
+     
+				    convolution = new ConvolutionFilter(); 
+				    convolution.matrixX = 3; 
+				    convolution.matrixY = 3; 
+				    convolution.matrix = matrix; 
+				    convolution.divisor = 1; 
+				     
+				    homography.filters = [convolution];
+				}
+				
+				trace('+++ sharpnessFilter activated');
+			}
+			
+			else if(!value && homography.filters.length > 0)
+			{
+				homography.filters = [];
+				trace('+++ sharpnessFilter deactivated');
+			}
+		}
+		
+		public function get sharpnessFilter():Boolean
+		{
+			return homography.filters.length > 0;
 		}
 		
 		/**

@@ -13,7 +13,7 @@
 			<param id="name">Chronotune</param>
 		</model>
 		<model id="question_mark">
-			<param id="name"No Model Found</param>
+			<param id="name">No Model Found</param>
 		</model>
 		<model id="establishing_uplink">
 			<param id="name">Uplink</param>

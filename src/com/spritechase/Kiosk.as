@@ -1,5 +1,7 @@
 package com.spritechase
 {
+	import flash.text.TextField;
+	import flash.text.TextFieldAutoSize;
 	import qtrack.QuadTrackerEvent;
 	import flash.display.Loader;
 	import flash.events.ProgressEvent;
@@ -17,7 +19,7 @@ package com.spritechase
 	import com.spritechase.ui.KioskUI;
 	import com.spritechase.core.*;
 	
-	[SWF(width="1024",height="768")]
+	[SWF(width="1024",height="768",fps="60")]
 	public class Kiosk extends Sprite
 	{
 		//Application members
@@ -32,23 +34,55 @@ package com.spritechase
 		private var loader:URLLoader;
 		private var uiLoader:Loader;
 		private var idleTimer:Timer;
-		private var idleDelay:int = 10000;
+		private var idleDelay:int = 30000;
 		private var userActive:Boolean = false;
 		
+		//debug members
+		//private var debug_txt:TextField;
+		//private var _debugging:Boolean = false;
+		//private var testLoader:URLLoader;
+		
+		/**
+		 *********************************************************************/
 		public function Kiosk()
 		{
 			trace('Kiosk()');
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onAddedToStage(e:Event):void
 		{
 			removeEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
+			//if(_debugging) initDebugger();
 			loadKioskConfiguration();
-			//init();
+			
 		}
 		
-		//$$testme load configuration externally
+		/**
+		 *********************************************************************/
+		/*private function initDebugger():void
+		{
+			trace('initDebugger()');
+			debug_txt = new TextField();
+			debug_txt.autoSize = TextFieldAutoSize.LEFT;
+			addChild(debug_txt);
+			debug_txt.textColor = 0xffffffff;
+			debug_txt.background = true;
+			debug_txt.backgroundColor = 0x22222222;
+		}*/
+		
+		/**
+		 *********************************************************************/
+		private function debug(msg:String):void
+		{
+			trace(msg);
+			//if(_debugging) debug_txt.text =  msg + '\n' + debug_txt.text;
+		}
+		
+		/**
+		 *********************************************************************/
 		private function loadKioskConfiguration():void
 		{
 			loader = new URLLoader();
@@ -56,14 +90,18 @@ package com.spritechase
 			loader.load(new URLRequest('xml/config.xml'));
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onKioskConfiguration(e:Event):void
 		{
 			KioskConfig.init(new XML(loader.data));
 			loader.removeEventListener("complete", onKioskConfiguration);
-			trace('Kiosk.onKioskConfiguration().  KioskConfiguration.data: ' + KioskConfig.data.toXMLString());
+			debug('Kiosk.onKioskConfiguration().  KioskConfiguration.data: ' + KioskConfig.data.toXMLString());
 			init();
 		}
 		
+		/**
+		 *********************************************************************/
 		private function init():void
 		{
 			ar = new KioskAR();
@@ -86,60 +124,90 @@ package com.spritechase
 			uiLoader.contentLoaderInfo.addEventListener(Event.COMPLETE, onUILoaded);
 			uiLoader.load(new URLRequest('KioskUI.swf'));
 			
-			//$$testme set up the idling logic
+			//Set up the idling logic
 			idleTimer = new Timer(idleDelay, 1);
 			idleTimer.addEventListener(TimerEvent.TIMER_COMPLETE, onIdleTimer);
+			
+			
+			//$$testme does the sharpness filter make any difference?
+			//ar.sharpnessFilter = true;
+			
+			//$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ DEBUG
+			//$$debug wtf, why am I not getting net connectivity (apparently) in kiosk mode?
+			//testLoader = new URLLoader();
+			//testLoader.addEventListener(HTTPStatusEvent.HTTP_STATUS, onDebugHTTPStatus);
+			//testLoader.addEventListener(IOErrorEvent.IO_ERROR, onDebugIOError);
+			//testLoader.addEventListener(Event.COMPLETE, onDebugLoadComplete);
+			//testLoader.load(new URLRequest('http://www.spritechase.com'));
+		}
+		/*
+		private function onDebugIOError(e:IOErrorEvent):void
+		{
+			debug('onDebugIOError(' + e + ')');
 		}
 		
+		private function onDebugLoadComplete(e:Event):void
+		{
+			debug('onDebugLoadComplete(' + e + ')');
+			debug('++++ data: ' + testLoader.data);
+		}
+		
+		private function onDebugHTTPStatus(e:HTTPStatusEvent):void
+		{
+			debug('onDebugHTTPStatus(' + e + ')');
+		}
+		*/
+		/**
+		 *********************************************************************/
 		private function onUILoaded(e:Event):void
 		{
-			trace('Kiosk.onUILoaded()');
+			debug('Kiosk.onUILoaded()');
 			ui = uiLoader.content as KioskUI;
 			
-			//$$testme add event listeners
+			//Add event listeners
 			ui.addEventListener(KioskEvent.NEW_MODEL_SELECTED, onNewModelSelected);
 			
 			addChild(ui);
 			
-			//$$debug configure the ui
-			//ui.debug = true;
-			//ui.idleDelay = 10000;
-			
-			//$$testme begin in idle mode
+			//Bbegin in idle mode
 			idle();
 		}
 		
+		/**
+		 *********************************************************************/
 		private function idle():void
 		{
 			userActive = false;
 			lastCode = '';
 			candidateCode = '';
 			
-			removeEventListener(MouseEvent.MOUSE_MOVE, resetIdleTimer);
-			ar.removeEventListener(KioskEvent.HANDSHAKE_ATTEMPT, resetIdleTimer);
+			unbindActivityEvents();
 			ui.idle();
 			ar.hideUplinkSpinner();
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onHandshakeAttempt(e:KioskEvent):void
 		{
 			if(!userActive)
 			{
 				idleTimer.start();
-				addEventListener(MouseEvent.MOUSE_MOVE, resetIdleTimer);
-				ar.addEventListener(KioskEvent.HANDSHAKE_ATTEMPT, resetIdleTimer);
+				bindActivityEvents();
 				ui.onHandshakeAttempt(e);
 				ar.showUplinkSpinner();
 			}
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onQrCandidateFound(e:KioskEvent):void
 		{
-			trace('Kiosk.onQrCandidateFound(' + e.data.code + ')');
+			debug('Kiosk.onQrCandidateFound(' + e.data.code + ')');
 			
 			if(e.data.code == lastCode || e.data.code == candidateCode)
 			{
-				trace("... The candidate is the same as the current or pending candidate code");
+				debug("... The candidate is the same as the current or pending candidate code");
 				return;
 			}
 			
@@ -148,42 +216,49 @@ package com.spritechase
 			loader.load(request);
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onServerHTTPStatus(e:HTTPStatusEvent):void
 		{
-			trace('Kiosk.onServerHTTPStatus(' + e + ')');
+			debug('Kiosk.onServerHTTPStatus(' + e + ')');
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onServerProgress(e:ProgressEvent):void
 		{
-			trace('Kiosk.onServerProgress(' + e + ')');
+			debug('Kiosk.onServerProgress(' + e + ')');
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onServerIOError(e:IOErrorEvent):void
 		{
-			trace('Kiosk.onServerIOError(' + e + ')');
+			debug('Kiosk.onServerIOError(' + e + ')');
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onServerData(e:Event):void
 		{
-			trace('Kiosk.onServerData(' + e + ')');
-			
+			debug('Kiosk.onServerData(' + e + ')');
 			
 			try
 			{
 				var xml:XML = new XML(loader.data);
 				
 				//$$debug wtf, why am I seeing an error when there isn't one?
-				trace('xml..error: "' + xml..error.toXMLString() + '"');
+				debug('xml..error: "' + xml..error.toXMLString() + '"');
 				
 				if(xml..error.toXMLString() != '')
 				{
-					trace('... Server returned an error: ' + xml..error);
+					debug('... Server returned an error: ' + xml..error);
 					return;
 				}
 				
 				if(xml..section.(@id == 'user').name == '')
 				{
-					trace('... Server returned an empty user; ignoring');
+					debug('... Server returned an empty user; ignoring');
 					return;
 				}
 				
@@ -192,7 +267,7 @@ package com.spritechase
 			
 			catch(e:Error)
 			{
-				trace('!!! Instancing KioskData failed.  Error: ' + e);
+				debug('!!! Instancing KioskData failed.  Error: ' + e);
 				lastData = null;
 			}
 			
@@ -200,8 +275,7 @@ package com.spritechase
 			{
 				userActive = true;
 				
-				addEventListener(MouseEvent.MOUSE_MOVE, resetIdleTimer);
-				ar.addEventListener(KioskEvent.HANDSHAKE_ATTEMPT, resetIdleTimer);
+				bindActivityEvents();
 				
 				idleTimer.stop();
 				idleTimer.start();
@@ -211,12 +285,34 @@ package com.spritechase
 			}
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onNewModelSelected(e:KioskEvent):void
 		{
-			trace('Kiosk.onNewModelSelected()');
+			debug('Kiosk.onNewModelSelected()');
 			ar.update(e.data.id);
 		}
 		
+		/**
+		 *********************************************************************/
+		private function bindActivityEvents():void
+		{
+			addEventListener(MouseEvent.MOUSE_MOVE, resetIdleTimer);
+			addEventListener(MouseEvent.CLICK, resetIdleTimer);
+			ar.addEventListener(KioskEvent.HANDSHAKE_ATTEMPT, resetIdleTimer);
+		}
+		
+		/**
+		 *********************************************************************/
+		private function unbindActivityEvents():void
+		{
+			removeEventListener(MouseEvent.MOUSE_MOVE, resetIdleTimer);
+			removeEventListener(MouseEvent.CLICK, resetIdleTimer);
+			ar.removeEventListener(KioskEvent.HANDSHAKE_ATTEMPT, resetIdleTimer);
+		}
+		
+		/**
+		 *********************************************************************/
 		private function resetIdleTimer(e:Event = null):void
 		{
 			if(idleTimer.running)
@@ -227,9 +323,11 @@ package com.spritechase
 			}
 		}
 		
+		/**
+		 *********************************************************************/
 		private function onIdleTimer(e:TimerEvent):void
 		{
-			trace('Kiosk.onIdleTimer()');
+			debug('Kiosk.onIdleTimer()');
 			idleTimer.stop();
 			idle();
 		}
